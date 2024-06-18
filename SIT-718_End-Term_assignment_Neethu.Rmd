@@ -1,0 +1,423 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+##PROBLEM 1
+
+A garment factory produces shirts and pants for Kmart chain. The contract is such that
+quality control is done before shipping and all products supplied to Kmart satisfying the
+quality requirements would be accepted by the chain. The factory employs 20 workers
+in the cutting department, 50 workers in the sewing department, and 14 workers in the
+packaging department. The garment factory works 8 productive hours a day (no idle
+time during these 8 hours). There is a daily demand for at most 180 shirts. The demand
+for pants is unlimited. Each worker can participate only in one activity- the activity to
+which they are assigned.
+
+```{r}
+
+# Load Library
+library(lpSolveAPI) # We'll want to have this at the start of every LP script for consistency
+
+# Initialising the model with 0 initial constraints and 3 decision variables
+garmentCompanyModel = make.lp(0, 2)
+
+# Specifying that we want to maximise our objective function
+lp.control(garmentCompanyModel, sense = "max")
+
+# Setting up our objective function
+set.objfn(garmentCompanyModel, c(10, 8))
+
+# Adding our constraints
+
+add.constraint(garmentCompanyModel, c(40, 20), "<=", 9600)
+
+add.constraint(garmentCompanyModel, c(40, 100), "<=", 24000)
+
+add.constraint(garmentCompanyModel, c(20, 20), "<=", 6720)
+
+
+# Setting up names of constraints and variables - this is optional, but is recommend to make your code and models readable!
+constraintNames = c("Constraint for Cutting department", "Constraint for Sewing Department", "Constraint for Packaging Department")
+variableNames = c("Shirt", "Pant")
+dimnames(garmentCompanyModel) = list(constraintNames, variableNames)
+
+# Solves the model
+solve(garmentCompanyModel)
+
+# View the output:
+message("Here is our model: ")
+garmentCompanyModel # You should see a representation of the model similar to how we've written it initially. 
+
+message("\nWith the given constraints, the maximum income that can  be obtained is Rs.", round(get.objective(garmentCompanyModel), 2))
+# You'll obtain a single number 18.66, which represents the objective value z at the optimal solution.
+
+optimal_solution <- round(get.variables(garmentCompanyModel),2)
+
+message("\nThe optimal solution is as follows : \nCloth A : ", toString(optimal_solution[1]) , " meter(s)", "\nCloth B : ", toString(optimal_solution[2]),  " meter(s)", "\nCloth C : ", toString(optimal_solution[3] ),  " meter(s)")
+
+round(get.variables(garmentCompanyModel), 2)
+# You should obtain three numbers: 2.17, 1.22, and 1.51. These represent the optimal length of cloths A, B, and C to be produced, respectively.
+
+#round(get.constraints(garmentCompanyModel) , 2)
+# You should obtain three numbers: 8, 10, and 15
+#These represent the right hand side of their respective constraints at our optimal solution.
+#Notice that these numbers also matches the right hand side of the each of the constraints respectively
+#- this means that there is no 'slack', or leeway in that constraint at our optimal solution.
+
+```
+
+#PROBLEM 2
+
+A factory makes three products called Bloom, Amber, and Leaf, from three materials
+containing Cotton, Wool and Nylon.
+
+a) Formulate an LP model for the factory that maximises the profit, while satisfying the
+demand and the cotton and wool proportion constraints.
+
+
+b) Solve the model using R/R Studio. Find the optimal profit and optimal values of the
+decision variables.
+
+
+```{r}
+obj <- c(15, 10, 25, 11, 6, 21, 15, 10, 25)
+
+# Create an LP model with 9 decision variables and 9 constraints
+lp_model <- make.lp(9, 9)
+
+set.objfn(lp_model, obj)
+
+lp.control(lp_model, sense = "max")
+
+# Add demand constraints
+#XC_(1 )+XW_(1 )+XN_(1 )≤4200
+add.constraint(lp_model, c(1, 1, 1, 0, 0, 0, 0, 0, 0), "<=", 4200)  # Bloom
+
+#XC_(2 )+XW_(2 )+XN_2≤3200
+add.constraint(lp_model, c(0, 0, 0, 1, 1, 1, 0, 0, 0), "<=", 3200)  # Amber
+
+#XC_(3 )+XW_(3 )+XN_3≤3500
+add.constraint(lp_model, c(0, 0, 0, 0, 0, 0, 1, 1, 1), "<=", 3500)  # Leaf
+
+# Add proportion constraints - Cotton
+#XC_(1 )-XW_(1 )-XN_(1 )≥ 0
+add.constraint(lp_model, c(1, -1, -1, 0, 0, 0, 0, 0, 0), ">=", 0)  # Bloom
+
+#0.4XC_(2 )- 0.6XW_2- 0.6XN_(2 )≥ 0
+add.constraint(lp_model, c( 0, 0, 0,0.4,-0.6, -0.6, 0, 0, 0), ">=", 0)  # Amber
+
+#XC_(3 )-XW_3-XN_3≥ 0
+add.constraint(lp_model, c(0, 0, 0, 0, 0, 0, 1, -1, -1), ">=", 0)  # Leaf
+
+# Add proportion constraints - Wool
+#0.6XW_(1 )-0.4 XC_(1 )-0.4XN_1≥ 0
+add.constraint(lp_model, c(-0.4, 0.6, -0.4, 0, 0, 0, 0, 0, 0), ">=", 0)  # Bloom
+
+#0.6 XW_(2 ) -0.4 XC_(2 )-0.4XN_(2 ) ≥ 0
+add.constraint(lp_model, c(0, 0, 0, -0.4, 0.6, -0.4, 0, 0, 0), ">=", 0)  # Amber
+
+#0.7XW_3-0.3 XC_(3 )-0.3XN_(3 )  ≥ 0
+add.constraint(lp_model, c(0, 0, 0, 0, 0, 0, -0.3, 0.7, -0.3), ">=", 0)  # Leaf
+
+# Add non-negativity constraints
+set.bounds(lp_model, lower = rep(0, 9))
+
+# Solve the linear programming problem
+lp_solution <- solve(lp_model)
+
+# Print the results
+print(lp_solution)
+
+# Extract and print the optimal values of decision variables
+optimal_values <- get.variables(lp_model)
+cat("Optimal Values:", optimal_values, "\n")
+
+# Extract and print the optimal objective value (maximum profit)
+optimal_profit <- get.objective(lp_model)
+cat("Optimal Profit:", optimal_profit, "\n")
+
+message("Given the constraints, the optimal profit for products at $.", optimal_profit)
+
+solution<-get.variables(lp_model)
+message("The solution is: ")
+solution
+
+```
+
+# PROBLEM 3
+
+Two construction companies, Giant and Sky, bid for the right to build in a field. The
+possible bids are $ 10 Million, $ 20 Million, $ 30 Million, $ 35 Million and $ 40 Million.
+The winner is the company with the higher bid.
+
+The two companies decide that in the case of a tie (equal bids), Giant is the winner and
+will get the field.
+
+Giant has ordered a survey and, based on the report from the survey, concludes that
+getting the field for more than $ 35 Million is as bad as not getting it (assume loss),
+except in case of a tie (assume win). Sky is not aware of this survey.
+
+(d) Construct a linear programming model for Company Sky in this game
+
+(e) Produce an appropriate code to solve the linear programming model in part (d).
+
+(f) Solve the game for Sky using the linear programming model and the code you constructed in parts (d) and (e). Interpret your solution.
+
+```{r}
+#Construct a linear programming model for Company Sky in this game
+
+library(lpSolveAPI)
+
+skygame<-make.lp(0,6) #initializing 0 constraints and 6 decision variables
+  
+lp.control(skygame, sense="maximize") #setting control parameters 
+set.objfn(skygame, c(0,0,0,0,0,1)) #y1,y2,y3,y4,y5,v
+#adding constraints
+add.constraint(skygame, c(1, -1, -1, -1, -1, 1), "<=", 0)#(y1-y2-y3-y4-y5)
+add.constraint(skygame, c(1, 1, -1, -1, -1, 1), "<=", 0) #(y1+y2-y3-y4-y5)
+add.constraint(skygame, c(1, 1, 1, -1, -1, 1), "<=", 0) #(y1+ y2+ y3 – y4-y5)
+add.constraint(skygame, c(1, 1, 1, 1, -1, 1), "<=", 0) # (y1+y2+y3+y4-y5
+add.constraint(skygame, c(1, 1, 1, 1, 1, 1), "<=", 0)#(y1 +y2 +y3 +y4+y5)
+add.constraint(skygame, c(1 , 1, 1, 1, 1, 1), "=", 1)
+
+ #updating the lower and upper bounds of decision variables
+  
+set.bounds(skygame, lower = c(0, 0, 0, 0, 0, -Inf))
+
+RowNames <- c("C1", "C2", "C3","C4", "C5","C6")
+
+ColNames <- c("Y1", "Y2", "Y3", "Y4", "Y5", "v")
+
+dimnames(skygame) <- list(RowNames, ColNames)
+
+skygame #Display the LP model
+solve(skygame) 
+
+valueofgame<-get.objective(skygame)
+valueofgame  #value of the game
+
+optimal_solution<-get.variables(skygame)
+optimal_solution #optimal strategies for Sky
+
+constraints1<-get.constraints(skygame)
+constraints1  #values of the constraints
+
+```
+
+
+```{r}
+# If Sky is player 1
+skygame<-make.lp(0,6) #initializing 0 constraints and 6 decision variables
+  
+lp.control(skygame, sense="maximize") #setting control parameters 
+set.objfn(skygame, c(0,0,0,0,0,1)) #x1,x2,x3,x4,x5,v
+#adding constraints
+add.constraint(skygame, c(1, 1, 1, 1, 1, 1), "<=", 0) #(x1 +x2 +x3 +x4+x5)
+add.constraint(skygame, c(-1, 1, 1, 1, 1, 1), "<=", 0) #(-x1+x2+x3+x4+x5)
+add.constraint(skygame, c(-1, -1, 1, 1, 1, 1), "<=", 0) #(-x1-x2+x3+x4+x5)
+add.constraint(skygame, c(-1, -1, -1, 1, 1, 1), "<=", 0) #(-x1-x2-x3+x4+x5)
+add.constraint(skygame, c(-1, -1, -1, -1, 1, 1), "<=", 0) #(-x1-x2-x3-x4+x5)
+add.constraint(skygame, c(1 , 1, 1, 1, 1, 1), "=", 1)
+
+ #updating the lower and upper bounds of decision variables
+  
+set.bounds(skygame, lower = c(0, 0, 0, 0, 0, -Inf))
+
+RowNames <- c("C1", "C2", "C3","C4", "C5","C6")
+
+ColNames <- c("x1", "x2", "x3", "x4", "x5", "v")
+
+dimnames(skygame) <- list(RowNames, ColNames)
+
+skygame #Display the LP model
+solve(skygame) 
+
+valueofgame<-get.objective(skygame)
+valueofgame  #value of the game
+
+optimal_solution<-get.variables(skygame)
+optimal_solution #optimal strategies for Sky
+
+constraints1<-get.constraints(skygame)
+constraints1  #values of the constraints
+
+```
+
+Sky as Player 2
+```{r}
+# Player II game (SKY)
+
+library(lpSolveAPI)
+
+lprec <- make.lp(0,6) # defining LP Model with 5 constraints
+
+lp.control(lprec, sense = "minimize") # Player 2 Objective function is to minimize
+
+#Setting the objective function equation
+
+set.objfn(lprec, c(0,0,0,0,0,1))
+
+# If Player I chooses strategy 1, the expected reward is (y1-y2-y3-y4-y5)
+
+add.constraint(lprec, c(1,-1,-1,-1,-1,1), ">=", 0)
+
+#If Player I chooses strategy 2, the expected reward is (y1+y2-y3-y4-y5)
+add.constraint(lprec, c(1,1,-1,-1,-1,1), ">=", 0)
+
+# If Player I chooses strategy 3, the expected reward is (y1+ y2+ y3 – y4-y5)
+add.constraint(lprec, c(1,1,1,-1,-1,1), ">=", 0)
+
+#If Player I chooses strategy 4, the expected reward is (y1+y2+y3+y4-y5)
+add.constraint(lprec, c(1,1,1,1,-1,1), ">=", 0)
+
+#If Player I chooses strategy 5, the expected reward is (y1 +y2 +y3 +y4+y5)
+add.constraint(lprec, c(1,1,1,1,1,1), ">=", 0)
+
+# Sum of total probabilities constraints is y1 +y2 +y3 + y4 + y5 =1
+add.constraint(lprec, c(1,1,1,1,1,1), "=", 1)
+
+# Setting Boundaries
+
+# Set lower bounds for decision variables
+lower_bounds <- c(0, 0, 0, 0, 0)  # Adjust the length based on the number of decision variables
+
+# Add -Inf for the objective function coefficient
+lower_bounds <- c(lower_bounds, -Inf)
+
+rowNames <- c("C1", "C2", "C3","C4", "C5","C6")
+
+colNames <- c("y1", "y2", "y3", "y4", "y5","v")
+
+# Adding Row and Col names to LP Model
+dimnames(lprec) <- list(rowNames, colNames)
+
+# Solving the LP Model as defined above
+
+solve(lprec)
+
+# return the game value
+get.objective(lprec)
+
+# returning the probabilities of each strategy 
+get.variables(lprec)
+
+# Get constraints
+get.constraints(lprec)
+
+
+```
+# Sky as Player 1
+
+```{r}
+skygame<-make.lp(0,6) #initializing 0 constraints and 6 decision variables
+  
+lp.control(skygame, sense="maximize") #setting control parameters 
+set.objfn(skygame, c(0,0,0,0,0,1)) #x1,x2,x3,x4,x5,v
+#adding constraints
+add.constraint(skygame, c(1, 1, 1, -1, 1, 1), "<=", 0) # (x1 +x2 +x3 +x4+x5),If Player II chooses strategy 1
+add.constraint(skygame, c(-1, 1, 1, 1, 1, 1), "<=", 0) #  (-x1+x2+x3+x4+x5),If Player II chooses strategy 2
+add.constraint(skygame, c(-1,-1, 1, -1, 1, 1), "<=", 0) # (-x1-x2+x3+x4+x5),If Player II chooses strategy 3
+add.constraint(skygame, c(-1, -1, -1, 1, 1, 1), "<=", 0) # (-x1-x2-x3+x4+x5),If Player II chooses strategy 4
+add.constraint(skygame, c(-1, -1, -1, -1, 1, 1), "<=", 0) # (-x1-x2-x3-x4+x5),If Player II chooses strategy 5
+add.constraint(skygame, c(1 , 1, 1, 1, 1, 1), "=", 1)
+
+ #updating the lower and upper bounds of decision variables
+  
+set.bounds(skygame, lower = c(0, 0, 0, 0, 0, -Inf))
+
+RowNames <- c("C1", "C2", "C3","C4", "C5","C6")
+
+ColNames <- c("x1", "x2", "x3", "x4", "x5", "v")
+
+dimnames(skygame) <- list(RowNames, ColNames)
+
+skygame #Display the LP model
+solve(skygame) 
+
+valueofgame<-get.objective(skygame)
+valueofgame  #value of the game
+
+optimal_solution<-get.variables(skygame)
+optimal_solution #optimal strategies for Sky
+
+constraints1<-get.constraints(skygame)
+constraints1  #values of the constraints
+
+```
+# Giant as Player 2
+
+```{r}
+skygame<-make.lp(0,6) #initializing 0 constraints and 6 decision variables
+  
+lp.control(skygame, sense="minimize") #setting control parameters 
+set.objfn(skygame, c(0,0,0,0,0,1)) #x1,x2,x3,x4,x5,v
+#adding constraints
+add.constraint(skygame, c(1, -1, -1, -1, -1, 1), "<=", 0) # (y1 -y2-y3-y4-y5),If Player II chooses strategy 1
+add.constraint(skygame, c(1, 1, -1, -1, -1, 1), "<=", 0) #  (y1+y2-y3-y4-y5),If Player II chooses strategy 2
+add.constraint(skygame, c(1,1, 1, -1, -1, 1), "<=", 0) #  (y1+y2-+y3 – y4-y5),If Player II chooses strategy 3
+add.constraint(skygame, c(1, 1, 1, 1, -1, 1), "<=", 0) #  (y1+y2+y3+y4-y5),If Player II chooses strategy 4
+add.constraint(skygame, c(1, 1, 1, 1, 1, 1), "<=", 0) #  (y1 +y2 +y3 +y4+y5),If Player II chooses strategy 5
+add.constraint(skygame, c(1 , 1, 1, 1, 1, 1), "=", 1)
+
+ #updating the lower and upper bounds of decision variables
+  
+set.bounds(skygame, lower = c(0, 0, 0, 0, 0, -Inf))
+
+RowNames <- c("C1", "C2", "C3","C4", "C5","C6")
+
+ColNames <- c("x1", "x2", "x3", "x4", "x5", "v")
+
+dimnames(skygame) <- list(RowNames, ColNames)
+
+skygame #Display the LP model
+solve(skygame) 
+
+valueofgame<-get.objective(skygame)
+valueofgame  #value of the game
+
+optimal_solution<-get.variables(skygame)
+optimal_solution #optimal strategies for Sky
+
+constraints1<-get.constraints(skygame)
+constraints1  #values of the constraints
+```
+
+# Giant as player 1
+
+```{r}
+skygame<-make.lp(0,6) #initializing 0 constraints and 6 decision variables
+  
+lp.control(skygame, sense="minimize") #setting control parameters 
+set.objfn(skygame, c(0,0,0,0,0,1)) #x1,x2,x3,x4,x5,v
+#adding constraints
+add.constraint(skygame, c(1, 1, 1, 1, 1, 1), "<=", 0) # (x1+x2+x3+ x4+x5),If Player II chooses strategy 1
+add.constraint(skygame, c(-1, 1, 1, 1, 1, 1), "<=", 0) #   (-x1+x2+x3+x4+x5),If Player II chooses strategy 2
+add.constraint(skygame, c(-1,-1, 1, 1, 1, 1), "<=", 0) #  (-x1-x2+x3+x4+x5),If Player II chooses strategy 3
+add.constraint(skygame, c(-1, -1, -1, -1, 1, 1), "<=", 0) #  (-x1-x2-x3+x4+x5),If Player II chooses strategy 4
+add.constraint(skygame, c(-1, -1, -1, -1, 1, 1), "<=", 0) #  (-x1- x2-x3-x4+x5),If Player II chooses strategy 5
+add.constraint(skygame, c(1 , 1, 1, 1, 1, 1), "=", 1)
+
+ #updating the lower and upper bounds of decision variables
+  
+set.bounds(skygame, lower = c(0, 0, 0, 0, 0, -Inf))
+
+RowNames <- c("C1", "C2", "C3","C4", "C5","C6")
+
+ColNames <- c("x1", "x2", "x3", "x4", "x5", "v")
+
+dimnames(skygame) <- list(RowNames, ColNames)
+
+skygame #Display the LP model
+solve(skygame) 
+
+valueofgame<-get.objective(skygame)
+valueofgame  #value of the game
+
+optimal_solution<-get.variables(skygame)
+optimal_solution #optimal strategies for Sky
+
+constraints1<-get.constraints(skygame)
+constraints1  #values of the constraints
+```
+
